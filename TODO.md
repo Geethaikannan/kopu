@@ -1,22 +1,20 @@
-# TODO List for PC Activity Monitoring Backend
-
-- [ ] Create backend directory structure
-- [ ] Implement package.json with dependencies
-- [ ] Create config/db.js for MongoDB connection
-- [ ] Create models/User.js with Mongoose schema
-- [ ] Create models/ActivityLog.js with Mongoose schema
-- [ ] Create models/Alert.js with Mongoose schema
-- [ ] Create middleware/authMiddleware.js for JWT verification
-- [ ] Create middleware/errorHandler.js for error handling
-- [ ] Create utils/keywordRules.js for keyword-based rules
-- [ ] Create utils/riskScoring.js for risk scoring logic and auto-alert
-- [ ] Create controllers/authController.js (register, login)
-- [ ] Create controllers/activityController.js (log, recent, stats)
-- [ ] Create controllers/alertController.js (get alerts, resolve)
-- [ ] Create routes/authRoutes.js
-- [ ] Create routes/activityRoutes.js
-- [ ] Create routes/alertRoutes.js
-- [ ] Create server.js to set up Express app
-- [ ] Create .env with environment variables
-- [ ] Run npm install in backend directory
-- [ ] Test server startup with npm start
+- [x] Create backend directory structure
+- [x] Implement package.json with dependencies
+- [x] Create config/db.js for MongoDB connection
+- [x] Create models/User.js with Mongoose schema
+- [x] Create models/ActivityLog.js with Mongoose schema
+- [x] Create models/Alert.js with Mongoose schema
+- [x] Create middleware/authMiddleware.js for JWT verification
+- [x] Create middleware/errorHandler.js for error handling
+- [x] Create utils/keywordRules.js for keyword-based rules
+- [x] Create utils/riskScoring.js for risk scoring logic and auto-alert
+- [x] Create controllers/authController.js (register, login)
+- [x] Create controllers/activityController.js (log, recent, stats)
+- [x] Create controllers/alertController.js (get alerts, resolve)
+- [x] Create routes/authRoutes.js
+- [x] Create routes/activityRoutes.js
+- [x] Create routes/alertRoutes.js
+- [x] Create server.js to set up Express app
+- [x] Create .env with environment variables
+- [x] Run npm install in backend directory
+- [x] Test server startup with npm start
