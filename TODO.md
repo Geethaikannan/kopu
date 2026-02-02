@@ -1,6 +1,22 @@
-# TODO List for Admin Dashboard Project
+# TODO List for PC Activity Monitoring Backend
 
-- [x] Create index.html with full dashboard structure (header, sidebar navigation, main content areas for each page)
-- [x] Create style.css for responsive layout, professional styling (cards, shadows, color coding, icons via CSS)
-- [x] Create script.js for navigation switching, mock data population, auto-refresh on Dashboard, confirmations on Control Panel, filtering on Logs
-- [x] Test the dashboard by opening index.html in browser to ensure responsiveness and functionality
+- [ ] Create backend directory structure
+- [ ] Implement package.json with dependencies
+- [ ] Create config/db.js for MongoDB connection
+- [ ] Create models/User.js with Mongoose schema
+- [ ] Create models/ActivityLog.js with Mongoose schema
+- [ ] Create models/Alert.js with Mongoose schema
+- [ ] Create middleware/authMiddleware.js for JWT verification
+- [ ] Create middleware/errorHandler.js for error handling
+- [ ] Create utils/keywordRules.js for keyword-based rules
+- [ ] Create utils/riskScoring.js for risk scoring logic and auto-alert
+- [ ] Create controllers/authController.js (register, login)
+- [ ] Create controllers/activityController.js (log, recent, stats)
+- [ ] Create controllers/alertController.js (get alerts, resolve)
+- [ ] Create routes/authRoutes.js
+- [ ] Create routes/activityRoutes.js
+- [ ] Create routes/alertRoutes.js
+- [ ] Create server.js to set up Express app
+- [ ] Create .env with environment variables
+- [ ] Run npm install in backend directory
+- [ ] Test server startup with npm start
