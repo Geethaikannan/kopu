@@ -1,3 +1,5 @@
 pynput
 psutil
 requests
+python-jose[cryptography]
+passlib[bcrypt]

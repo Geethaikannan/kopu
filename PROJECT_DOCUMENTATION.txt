@@ -1,0 +1,415 @@
+================================================================================
+                    KOPU - PC ACTIVITY MONITORING & ALERT SYSTEM
+                         PROJECT DOCUMENTATION
+================================================================================
+
+Project Overview:
+-----------------
+Kopu is a PC Activity Monitoring & Alert System designed to monitor user 
+activity on computers, detect suspicious keywords, calculate risk scores, 
+and generate alerts for administrators. The system consists of multiple 
+components:
+
+1. PC Agent (Python) - Runs on client machines to monitor activity
+2. Backend Server - Receives and processes activity data (two implementations)
+3. Frontend - Basic user interface for viewing alerts and activity
+
+================================================================================
+                            COMPONENT 1: PC AGENT (Python)
+================================================================================
+
+Location: /pc-agent/
+
+The PC Agent is a Python-based client application that runs on monitored 
+machines. It captures keyboard activity and application usage without storing 
+raw data, preserving user privacy.
+
+Files:
+------
+1. main.py
+   - Entry point for the PC Activity Monitoring Agent
+   - Starts keyboard monitoring in a background thread
+   - Starts periodic data sender thread (sends data every 60 seconds)
+   - Handles graceful shutdown on KeyboardInterrupt
+   - Uses a fixed USER_ID for demo purposes
+
+2. key_monitor.py
+   - Monitors keyboard activity using pynput library
+   - Counts total keystrokes and detects suspicious keywords
+   - Uses a temporary buffer to build words (cleared after detection)
+   - Privacy-preserving: does not store raw keystroke data
+   - Functions:
+     * on_press(key): Callback for key press events
+     * start_keyboard_monitoring(): Starts listener in background thread
+     * get_counters(): Returns (total_keystrokes, suspicious_count)
+     * reset_counters(): Resets counters after sending data
+
+3. app_monitor.py
+   - Monitors currently running applications using psutil
+   - Identifies the application with highest CPU usage as active app
+   - Handles permission errors gracefully
+   - Function:
+     * get_current_app_name(): Returns name of active application or "Unknown"
+
+4. backend_sender.py
+   - Sends activity data to the backend server
+   - Sends data every 60 seconds via POST request
+   - Sends metadata only (no raw data) for privacy
+   - Functions:
+     * send_activity_data(user_id, app_name, risk_score): POST to backend
+     * periodic_sender(): Runs loop to send data every 60 seconds
+   - Backend URL: http://localhost:5000/api/activity/log
+   - Payload format:
+     {
+       "userId": "string",
+       "appName": "string",
+       "eventType": "KEYWORD",
+       "riskScore": float
+     }
+
+5. risk.py
+   - Calculates risk score based on suspicious keyword detections
+   - Formula: risk = (suspicious_count / total_keystrokes) * 10
+   - Returns 0.0 if total_keystrokes is 0
+   - Function:
+     * calculate_risk_score(suspicious_count, total_keystrokes): Returns float
+
+6. keywords.py
+   - Defines list of suspicious keywords for monitoring
+   - Current keywords:
+     * "hack", "password", "admin", "cheat", "malware"
+   - These keywords trigger risk score increases when detected
+
+7. requirements.txt
+   - Python dependencies for the PC Agent:
+     * pynput - Keyboard monitoring
+     * psutil - Process and system monitoring
+     * requests - HTTP requests to backend
+
+================================================================================
+                    COMPONENT 2: BACKEND - Python/FastAPI
+================================================================================
+
+Location: /backend/app/
+
+The Python FastAPI backend is the more complete implementation with all routes 
+and services properly implemented.
+
+Files:
+------
+1. main.py
+   - Main FastAPI application entry point
+   - Configures CORS middleware
+   - Registers all routers (auth, agents, activity, alerts)
+   - Health check endpoint at /api/health
+   - Root endpoint at / with app info
+   - Creates database tables on startup
+   - Runs on port 5000
+
+2. Core Module (/app/core/):
+   
+   a) config.py
+      - Application configuration settings
+      - Database URL, app name, version, CORS origins
+      - Secret key for JWT token generation
+   
+   b) database.py
+      - SQLite database setup using SQLAlchemy
+      - Base class for models
+      - get_db() function for dependency injection
+      - init_db() function to create tables
+   
+   c) security.py
+      - JWT token handling
+      - Password hashing (if needed)
+      - get_current_user() dependency for protected routes
+      - get_api_key() dependency for agent authentication
+      - get_optional_api_key() for backward compatibility
+
+3. Models (/app/models/):
+   
+   a) user.py
+      - User model for admin/users
+      - Fields: id, username, email, hashed_password, created_at
+   
+   b) agent.py
+      - Agent model for PC monitoring agents
+      - Fields: id, name, api_key, status, last_seen, created_at
+      - Relationships: activity_logs, alerts
+      - Methods: update_last_seen()
+   
+   c) activity_log.py
+      - Activity log model
+      - Fields: id, agent_id, user_id, activity_type, app_name, 
+                risk_score, risk_level, description, timestamp
+      - Relationship: agent (many-to-one)
+   
+   d) alert.py
+      - Alert model for high-risk activities
+      - Fields: id, agent_id, activity_log_id, severity, message, 
+                is_resolved, created_at, resolved_at
+      - Relationship: agent (many-to-one)
+
+4. Schemas (/app/schemas/):
+   
+   a) user.py - UserCreate, UserResponse, UserUpdate schemas
+   b) agent.py - AgentCreate, AgentUpdate, AgentResponse, AgentListResponse
+   c) activity_log.py - ActivityLogCreate, ActivityLogResponse, 
+                        AgentActivityCreate, ActivityLogListResponse
+   d) alert.py - AlertCreate, AlertUpdate, AlertResponse, AlertListResponse
+
+5. Services (/app/services/):
+   
+   a) risk_service.py
+      - Risk evaluation service
+      - Risk levels: low (0-3), medium (3-6), high (6-8), critical (8+)
+      - Functions:
+        * calculate_risk_level(risk_score): Returns risk level string
+        * evaluate_activity_risk(activity_data, db): Evaluates risk and creates alerts
+        * get_recent_high_risk_activities(db, hours): Gets high-risk activities
+        * get_risk_statistics(db, hours): Gets risk statistics
+      
+   b) alert_service.py
+      - Alert management service
+      - Functions:
+        * get_active_alerts(db, severity, limit): Gets unresolved alerts
+        * get_all_alerts(db, skip, limit, is_resolved, severity): Gets all alerts
+        * resolve_alert(db, alert_id): Resolves an alert
+        * create_high_risk_alert(db, activity, risk_score): Creates alert for high risk
+        * get_alert_statistics(db): Gets alert statistics
+
+6. Routes (/app/routes/):
+   
+   a) auth.py - Authentication routes (login, register)
+   b) agents.py - Agent CRUD operations (admin only)
+      - POST /api/agents/ - Create agent
+      - GET /api/agents/ - List all agents
+      - GET /api/agents/{id} - Get specific agent
+      - PUT /api/agents/{id} - Update agent
+      - DELETE /api/agents/{id} - Delete agent
+   
+   c) activity.py - Activity log routes
+      - POST /api/activity/log - Receive activity from agent (API key auth)
+      - POST /api/activity/ - Create activity log (admin only)
+      - GET /api/activity/ - Get activity logs (admin only)
+      - GET /api/activity/stats - Get activity statistics (admin only)
+      - GET /api/activity/{id} - Get specific activity log (admin only)
+   
+   d) alerts.py - Alert management routes
+      - POST /api/alerts/ - Create alert (admin only)
+      - GET /api/alerts/ - Get all alerts (admin only)
+      - GET /api/alerts/active - Get active alerts (admin only)
+      - GET /api/alerts/stats - Get alert statistics (admin only)
+      - GET /api/alerts/{id} - Get specific alert (admin only)
+      - PUT /api/alerts/{id}/resolve - Resolve alert (admin only)
+      - DELETE /api/alerts/{id} - Delete alert (admin only)
+
+================================================================================
+                    COMPONENT 3: BACKEND - Node.js/Express
+================================================================================
+
+Location: /backend/
+
+NOTE: This implementation appears to be incomplete (missing agent routes registration)
+
+Files:
+------
+1. server.js
+   - Main Express server
+   - Middleware: cors, express.json, express.urlencoded
+   - Routes:
+     * /api/auth - Authentication routes
+     * /api/activity - Activity routes
+     * /api/alerts - Alert routes
+   - Health check at /api/health
+   - Error handling middleware
+   - Runs on port 5000 (or PORT env variable)
+
+2. Models (/models/):
+   - Agent.js - Agent schema with userId, device_name, api_key, last_seen, status
+   - ActivityLog.js - Activity log schema
+   - Alert.js - Alert schema
+   - User.js - User schema
+
+3. Controllers (/controllers/):
+   - agentController.js - Agent CRUD operations
+   - activityController.js - Activity log operations
+   - alertController.js - Alert operations
+   - authController.js - Authentication operations
+
+4. Routes (/routes/):
+   - agentRoutes.js - Agent routes
+   - activityRoutes.js - Activity routes
+   - alertRoutes.js - Alert routes
+   - authRoutes.js - Authentication routes
+
+5. Middleware (/middleware/):
+   - agentAuthMiddleware.js - API key authentication for agents
+   - authMiddleware.js - JWT authentication for users
+   - errorHandler.js - Error handling middleware
+
+6. Utils (/utils/):
+   - keywordRules.js - Keyword detection rules
+   - riskScoring.js - Risk scoring logic
+
+7. Config (/config/):
+   - db.js - Database connection (MongoDB)
+
+================================================================================
+                            COMPONENT 4: FRONTEND
+================================================================================
+
+Location: / (root directory)
+
+Files:
+------
+1. index.html
+   - Main HTML file for the frontend
+   - Basic structure for the monitoring dashboard
+
+2. style.css
+   - CSS styles for the frontend
+   - Styling for the dashboard and UI components
+
+3. script.js
+   - JavaScript for frontend functionality
+   - API calls to backend
+   - UI interactions
+
+================================================================================
+                              DATABASE
+================================================================================
+
+The project uses SQLite for the Python FastAPI backend:
+- Database file: /backend/kopu.db
+
+Tables created:
+- users
+- agents
+- activity_logs
+- alerts
+
+================================================================================
+                            DEPENDENCIES
+================================================================================
+
+Python Backend (backend/requirements.txt):
+- fastapi
+- uvicorn
+- sqlalchemy
+- pydantic
+- python-multipart
+- python-jose
+- passlib
+- bcrypt
+- python-dotenv
+- cors
+
+Node.js Backend (backend/package.json):
+- express
+- mongoose
+- dotenv
+- cors
+- jsonwebtoken
+- bcryptjs
+- express-validator
+
+PC Agent (pc-agent/requirements.txt):
+- pynput
+- psutil
+- requests
+
+================================================================================
+                            API ENDPOINTS SUMMARY
+================================================================================
+
+Python/FastAPI Backend (Port 5000):
+-----------------------------------
+Health:
+  GET /api/health - Health check
+  GET / - Root info
+
+Authentication:
+  POST /api/auth/register - Register new user
+  POST /api/auth/login - Login user
+
+Agents:
+  POST /api/agents/ - Create agent (admin)
+  GET /api/agents/ - List agents (admin)
+  GET /api/agents/{id} - Get agent (admin)
+  PUT /api/agents/{id} - Update agent (admin)
+  DELETE /api/agents/{id} - Delete agent (admin)
+
+Activity:
+  POST /api/activity/log - Receive agent activity (API key auth)
+  POST /api/activity/ - Create activity (admin)
+  GET /api/activity/ - List activities (admin)
+  GET /api/activity/stats - Get statistics (admin)
+  GET /api/activity/{id} - Get activity (admin)
+
+Alerts:
+  POST /api/alerts/ - Create alert (admin)
+  GET /api/alerts/ - List alerts (admin)
+  GET /api/alerts/active - List active alerts (admin)
+  GET /api/alerts/stats - Get alert statistics (admin)
+  GET /api/alerts/{id} - Get alert (admin)
+  PUT /api/alerts/{id}/resolve - Resolve alert (admin)
+  DELETE /api/alerts/{id} - Delete alert (admin)
+
+================================================================================
+                            RISK SCORING SYSTEM
+================================================================================
+
+The system uses a risk scoring algorithm:
+
+1. PC Agent calculates risk score:
+   risk = (suspicious_count / total_keystrokes) * 10
+   
+2. Backend classifies risk levels:
+   - LOW: 0.0 - 3.0
+   - MEDIUM: 3.0 - 6.0
+   - HIGH: 6.0 - 8.0
+   - CRITICAL: 8.0+
+
+3. Alerts are generated for HIGH and CRITICAL risk levels
+
+================================================================================
+                            CURRENT STATUS
+================================================================================
+
+Implemented:
+✓ PC Agent - Complete with keyboard monitoring, app monitoring, risk scoring
+✓ Python/FastAPI Backend - Complete with all routes, models, services
+✓ Node.js/Express Backend - Partial implementation (incomplete)
+✓ Basic Frontend - HTML, CSS, JS files present
+✓ Database - SQLite database with all tables
+✓ Risk Evaluation Service - Complete
+✓ Alert Service - Complete
+
+Pending/Incomplete:
+- Node.js backend missing agent routes registration
+- Frontend integration with backend APIs
+- User registration/login functionality (if needed)
+- Agent registration with API key management on startup
+
+================================================================================
+                            HOW TO RUN
+================================================================================
+
+1. Start Python FastAPI Backend:
+   cd backend/app
+   python main.py
+   # OR
+   uvicorn app.main:app --reload
+
+2. Start PC Agent:
+   cd pc-agent
+   pip install -r requirements.txt
+   python main.py
+
+3. Access API Documentation:
+   Open http://localhost:5000/docs in browser
+
+================================================================================
+                            END OF DOCUMENTATION
+================================================================================

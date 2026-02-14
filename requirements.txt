@@ -1,0 +1,19 @@
+# KOPU - PC Activity Monitoring & Alert System
+# Root requirements file - installs all dependencies
+
+# Backend dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# Agent dependencies
+pynput==1.7.6
+psutil==5.9.6
+requests==2.31.0
+
+# Frontend is vanilla HTML/JS - no dependencies needed
